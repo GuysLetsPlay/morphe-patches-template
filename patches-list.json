@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.0.0-dev.1",
+  "version": "1.0.0-dev.2",
   "patches": [
     {
       "name": "Auto claim channel points",
@@ -79,6 +79,32 @@
             },
             {
               "version": "1.0.2",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Fine-grained VOD playback speeds",
+      "description": "Adds PurpleTV VOD playback speeds from 0.50x through 2.00x in 0.05x increments. Original PurpleTV 25.3.0 APK: https://purpletv.aeong.win/Beta/2738.apk",
+      "default": true,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "tv.orange",
+          "name": "PurpleTV",
+          "description": null,
+          "apkFileType": null,
+          "appIconColor": "#9147FF",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "25.3.0",
               "versionCodes": null,
               "isExperimental": false,
               "minSdk": null,
