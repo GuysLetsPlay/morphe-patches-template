@@ -5,6 +5,14 @@ import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
 
 object Constants {
+    val COMPATIBILITY_HVV_SWITCH = Compatibility(
+        name = "HVV Switch",
+        packageName = "de.hochbahn.hvvswitch",
+        apkFileType = ApkFileType.APKM,
+        appIconColor = 0x0066A4,
+        targets = listOf(AppTarget("2.5.0")),
+    )
+
     val COMPATIBILITY_EXAMPLE = Compatibility(
         name = "XYZ app", // App name as it appears in the Android launcher.
         packageName = "com.example.app",
