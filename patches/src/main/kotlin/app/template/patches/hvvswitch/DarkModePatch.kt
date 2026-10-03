@@ -1,11 +1,13 @@
 package app.template.patches.hvvswitch
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.string
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.template.patches.shared.Constants.COMPATIBILITY_HVV_SWITCH
+import com.android.tools.smali.dexlib2.Opcode
 
 private const val LIGHT_HVV_MAP_STYLE =
     "mapbox://styles/hochbahn/cm8d9wt3z00qw01sbhxx9def5"
@@ -27,6 +29,15 @@ val darkModePatch = bytecodePatch(
         AppearanceFlowFingerprint.method.addInstructions(
             appearanceIndex,
             "sget-object p1, Ljx0;->a:Ljx0;",
+        )
+
+        // The flow emits the persisted DataStore selection after its initial value;
+        // replace that emitted selection too, so a previously saved Light/System value
+        // cannot switch the app back to a light palette.
+        val appearanceEmissionIndex = AppearanceEmissionFingerprint.instructionMatches.last().index
+        AppearanceEmissionFingerprint.method.addInstructions(
+            appearanceEmissionIndex,
+            "sget-object v3, Ljx0;->a:Ljx0;",
         )
 
         fun replaceStyle(fingerprint: Fingerprint, match: Int, register: String) {
@@ -51,6 +62,18 @@ val darkModePatch = bytecodePatch(
         replaceStyle(MapStyleIe3Fingerprint, 0, "v13")
     }
 }
+
+private val AppearanceEmissionFingerprint = Fingerprint(
+    definingClass = "Lzw0;",
+    name = "emit",
+    parameters = listOf("Ljava/lang/Object;", "Lkotlin/coroutines/Continuation;"),
+    filters = listOf(
+        fieldAccess(opcode = Opcode.IGET_BOOLEAN, definingClass = "Luik;", type = "Z"),
+        fieldAccess(opcode = Opcode.IGET_OBJECT, definingClass = "Luik;", type = "Lmve;"),
+        methodCall(definingClass = "Ls7c;", name = "d"),
+        methodCall(definingClass = "Lu07;", name = "emit"),
+    ),
+)
 
 private val AppearanceFlowFingerprint = Fingerprint(
     definingClass = "Luik;",
