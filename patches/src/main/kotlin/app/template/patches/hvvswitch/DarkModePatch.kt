@@ -113,7 +113,7 @@ val darkModePatch = bytecodePatch(
                 if-nez v1, :darkmode_regio_white
                 goto :darkmode_regio_color_ready
                 :darkmode_regio_white
-                const-wide p2, 0xffffffffL
+                sget-wide p2, Lnn3;->e:J
                 :darkmode_regio_color_ready
             """.trimIndent(),
         )
