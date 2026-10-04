@@ -1,11 +1,14 @@
 package app.template.patches.hvvswitch
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.opcode
 import app.morphe.patcher.string
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.patch.resourcePatch
 import app.template.patches.shared.Constants.COMPATIBILITY_HVV_SWITCH
 import com.android.tools.smali.dexlib2.Opcode
 
@@ -14,6 +17,22 @@ private const val LIGHT_HVV_MAP_STYLE =
 private const val CUSTOM_HVV_MAP_STYLE =
     "mapbox://styles/hochbahn/cmbgo3l2b008p01sc1kai6ue5"
 private const val DARK_MAP_STYLE = "mapbox://styles/mapbox/dark-v11"
+private const val DARK_SPLASH = "#ff080b14"
+
+private val darkSplashResourcePatch = resourcePatch(
+    name = "Dark startup screen",
+    description = "Uses a dark background for the HVV startup screen.",
+    default = true,
+) {
+    execute {
+        val colors = get("res/values/colors.xml")
+        val old = "<color name=\"ic_splashscreen_background\">#fff3f6fc</color>"
+        val new = "<color name=\"ic_splashscreen_background\">$DARK_SPLASH</color>"
+        val contents = colors.readText()
+        check(old in contents) { "Could not find the HVV splash background color" }
+        colors.writeText(contents.replace(old, new))
+    }
+}
 
 @Suppress("unused")
 val darkModePatch = bytecodePatch(
@@ -22,8 +41,14 @@ val darkModePatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_HVV_SWITCH)
+    dependsOn(darkSplashResourcePatch)
 
     execute {
+        fun forceSavedStyle(fingerprint: Fingerprint, register: String) {
+            val resultIndex = fingerprint.instructionMatches.last().index
+            fingerprint.method.addInstructions(resultIndex + 1, "const-string $register, \"$DARK_MAP_STYLE\"")
+        }
+
         // Set the value passed into the appearance flow to HVV's existing Dark enum.
         val appearanceIndex = AppearanceFlowFingerprint.instructionMatches[1].index
         AppearanceFlowFingerprint.method.addInstructions(
@@ -60,8 +85,68 @@ val darkModePatch = bytecodePatch(
         replaceStyle(MapStyleFhjFingerprint, 0, "v6")
         replaceStyle(MapStyleVf8Fingerprint, 0, "v4")
         replaceStyle(MapStyleIe3Fingerprint, 0, "v13")
+
+        // Existing installs have light URLs saved in SharedPreferences. Override each
+        // returned value (not only getString's fallback) so every map surface is dark.
+        forceSavedStyle(MapSavedGn1AFingerprint, "v0")
+        forceSavedStyle(MapSavedGn1StationaryFingerprint, "v5")
+        forceSavedStyle(MapSavedGn1BikeFingerprint, "v5")
+        forceSavedStyle(MapSavedHepFingerprint, "v9")
+        forceSavedStyle(MapSavedFhjFingerprint, "v3")
+        forceSavedStyle(MapSavedJ7pNightFingerprint, "v5")
+        forceSavedStyle(MapSavedJ7pDayFingerprint, "v5")
+        forceSavedStyle(MapSavedIe3Fingerprint, "v8")
+
+        // Compose text color is argument p2. Keep bus colors untouched and restore white
+        // only for RegionalExpress/Regionalbahn route labels.
+        RegionalRouteTextFingerprint.method.addInstructions(
+            0,
+            """
+                move-object/from16 v3, p0
+                const-string v0, "RE"
+                invoke-virtual {v3, v0}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
+                move-result v1
+                if-nez v1, :darkmode_regio_white
+                const-string v0, "RB"
+                invoke-virtual {v3, v0}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
+                move-result v1
+                if-nez v1, :darkmode_regio_white
+                goto :darkmode_regio_color_ready
+                :darkmode_regio_white
+                const-wide p2, 0xffffffffL
+                :darkmode_regio_color_ready
+            """.trimIndent(),
+        )
     }
 }
+
+private fun savedMapStyle(key: String, className: String, methodName: String) = Fingerprint(
+    definingClass = className,
+    name = methodName,
+    filters = listOf(
+        string(key),
+        methodCall(
+            definingClass = "Landroid/content/SharedPreferences;",
+            name = "getString",
+        ),
+        opcode(Opcode.MOVE_RESULT_OBJECT, MatchAfterImmediately()),
+    ),
+)
+
+private val MapSavedGn1AFingerprint = savedMapStyle("mapboxStyleUri", "Lgn1;", "a")
+private val MapSavedGn1StationaryFingerprint = savedMapStyle("stationaryBasedCarSharing_mapboxStyleUri", "Lgn1;", "invoke")
+private val MapSavedGn1BikeFingerprint = savedMapStyle("bikeAndRide_mapboxStyleUri", "Lgn1;", "invoke")
+private val MapSavedHepFingerprint = savedMapStyle("stationaryBasedCarSharing_mapboxStyleUri", "Lhep;", "b")
+private val MapSavedFhjFingerprint = savedMapStyle("stationaryBasedCarSharing_mapboxStyleUri", "Lfhj;", "c")
+private val MapSavedJ7pNightFingerprint = savedMapStyle("mapboxNightStyleUri", "Lj7p;", "b")
+private val MapSavedJ7pDayFingerprint = savedMapStyle("mapboxStyleUri", "Lj7p;", "b")
+private val MapSavedIe3Fingerprint = savedMapStyle("cityBikeConfig_mapboxStyleUri", "Lie3;", "invoke")
+
+private val RegionalRouteTextFingerprint = Fingerprint(
+    definingClass = "Lehk;",
+    name = "b",
+    parameters = listOf("Ljava/lang/String;", "Lzvb;", "J", "J", "Li77;", "J", "Leck;", "Lzak;", "J", "I", "Z", "I", "I", "Lgf7;", "Lgik;", "Lxx3;", "I", "I", "I"),
+)
 
 private val AppearanceEmissionFingerprint = Fingerprint(
     definingClass = "Lzw0;",
