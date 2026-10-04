@@ -111,6 +111,10 @@ val darkModePatch = bytecodePatch(
                 invoke-virtual {v3, v0}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
                 move-result v1
                 if-nez v1, :darkmode_regio_white
+                const-string v0, "6([0-7][0-9]|8[0-8])"
+                invoke-virtual {v3, v0}, Ljava/lang/String;->matches(Ljava/lang/String;)Z
+                move-result v1
+                if-nez v1, :darkmode_regio_white
                 goto :darkmode_regio_color_ready
                 :darkmode_regio_white
                 sget-wide p2, Lnn3;->e:J
