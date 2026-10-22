@@ -6,6 +6,13 @@
 25.3.0** (`tv.orange`). It replaces the application's `PlaybackRateSetting` value
 list with the exact rates from **0.50x through 2.00x, in 0.05x increments**.
 
+GitHub links:
+
+- Repository: `https://github.com/GuysLetsPlay/morphe-patches-template`
+- Handoff branch: `https://github.com/GuysLetsPlay/morphe-patches-template/tree/codex/purpletv-hold-to-2x-handoff`
+- Fine-grained speed patch: `https://github.com/GuysLetsPlay/morphe-patches-template/blob/dev/patches/src/main/kotlin/app/template/patches/purpletv/playback/FineGrainedVodPlaybackSpeedPatch.kt`
+- Published bundle release: `https://github.com/GuysLetsPlay/morphe-patches-template/releases/tag/v1.0.0-dev.2`
+
 The patch is intentionally specific to PurpleTV 25.3.0, whose original APK is:
 
 `https://purpletv.aeong.win/Beta/2738.apk`
